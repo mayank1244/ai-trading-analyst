@@ -14,7 +14,37 @@ render_autorefresh_sidebar()
 import requests
 import streamlit as st
 from dashboard.components.cards import recommendation_card
-from dashboard.components.charts import score_radar_chart, why_up_down_chart
+
+try:
+    from dashboard.components.charts import score_radar_chart, why_up_down_chart
+except Exception:
+    import plotly.graph_objects as go
+    from dashboard.components.charts import score_radar_chart
+
+    def why_up_down_chart(bullish_signals, bearish_signals, quant_score=50.0):
+        up_pct = round(quant_score, 1)
+        down_pct = round(max(0.0, 100.0 - up_pct), 1)
+        fig = go.Figure()
+        fig.add_trace(
+            go.Bar(
+                y=["🟢 Upside Driver (UP)", "🔴 Downside Risk (DOWN)"],
+                x=[up_pct, down_pct],
+                orientation="h",
+                marker=dict(color=["#26a641", "#da3633"]),
+                text=[f"🟢 UP: {up_pct}%", f"🔴 DOWN: {down_pct}%"],
+                textposition="auto",
+            )
+        )
+        fig.update_layout(
+            title="<b>Why It Might Go UP vs. Why It Might Go DOWN</b>",
+            paper_bgcolor="#0d1117",
+            plot_bgcolor="#0d1117",
+            font=dict(color="#c9d1d9"),
+            height=260,
+            xaxis=dict(range=[0, 100]),
+            margin=dict(l=40, r=40, t=50, b=40),
+        )
+        return fig
 
 API_BASE = "http://localhost:8000/api/v1"
 
