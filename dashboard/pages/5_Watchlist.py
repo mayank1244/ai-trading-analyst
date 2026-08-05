@@ -37,7 +37,12 @@ if add_clicked and new_symbol:
         st.error(f"Error: {exc}")
 
 st.markdown("---")
-st.subheader("📋 Saved Watchlist Portfolio")
+col_title, col_ref = st.columns([3, 1])
+with col_title:
+    st.subheader("📋 Saved Watchlist Portfolio")
+with col_ref:
+    if st.button("🔄 Refresh Live Prices", use_container_width=True):
+        st.rerun()
 
 try:
     resp = requests.get(f"{API_BASE}/watchlist", timeout=30)
@@ -46,19 +51,7 @@ except Exception as exc:
     st.error(f"Failed to fetch watchlist: {exc}")
     watchlist_items = []
 
-def format_holding_compact(period: str) -> str:
-    if not period:
-        return "3D-5D"
-    p = str(period).lower().strip()
-    if "intraday" in p:
-        return "Intraday"
-    if "3-5" in p or "3-5d" in p:
-        return "3D-5D"
-    if "1-2" in p or "1-2w" in p:
-        return "1W-2W"
-    if "1-3" in p or "1-3m" in p:
-        return "1M-3M"
-    return period.replace("days", "D").replace("day", "D").replace("weeks", "W").replace("week", "W").replace("months", "M").replace("month", "M").replace(" ", "")
+
 
 if watchlist_items:
     table_data = []
@@ -85,8 +78,7 @@ if watchlist_items:
             except Exception:
                 date_str = ""
 
-        compact_holding = format_holding_compact(holding)
-        price_meta = f" ({date_str} {compact_holding})" if date_str else f" ({compact_holding})"
+        price_meta = f" ({date_str})" if date_str else ""
         watchlist_price_str = f"₹{w_price:,.2f}{price_meta}"
 
         table_data.append(
@@ -95,7 +87,6 @@ if watchlist_items:
                 "Watchlist Price": watchlist_price_str,
                 "Current Price": f"₹{c_price:,.2f}",
                 "Bullies percentage": f"{bull_pct:.0f}%",
-                "holding period": holding,
                 "target Price": f"₹{target:,.2f}",
                 "Stop Loss": f"₹{sl:,.2f}",
             }

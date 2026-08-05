@@ -1,5 +1,6 @@
 """Watchlist API Routes with live indicators and snapshot prices."""
 
+import asyncio
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -8,9 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Watchlist
 from app.database.session import get_db
-from app.market.data_fetcher import data_fetcher
-from app.ranking.engine import recommendation_engine
-from app.utils.cache import cache
+from app.market.data_fetcher import QuoteData, data_fetcher
 from app.utils.logger import logger
 
 router = APIRouter(prefix="/watchlist", tags=["Watchlist"])
@@ -22,8 +21,6 @@ class WatchlistAddRequest(BaseModel):
     notes: Optional[str] = ""
 
 
-import asyncio
-
 @router.get("")
 async def get_watchlist(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Watchlist).order_by(Watchlist.added_at.desc()))
@@ -32,24 +29,36 @@ async def get_watchlist(db: AsyncSession = Depends(get_db)):
     if not items:
         return []
 
+    # Concurrently fetch live real-time market quotes for all watchlist symbols
+    quote_results = await asyncio.gather(
+        *[data_fetcher.fetch_quote(item.symbol.upper()) for item in items],
+        return_exceptions=True
+    )
+
     enriched_items = []
-    uncached_symbols = []
-
-    for item in items:
+    for item, q in zip(items, quote_results):
         sym = item.symbol.upper()
-        cache_key = f"quote:{sym}"
-        cached = await cache.get(cache_key)
+        w_price = float(item.watchlist_price or 0.0)
 
-        w_price = item.watchlist_price or 0.0
-        if cached and cached.get("ltp"):
-            c_price = float(cached["ltp"])
+        # Extract live current market price
+        if isinstance(q, QuoteData) and q and q.ltp > 0:
+            c_price = float(q.ltp)
         else:
             c_price = w_price
-            uncached_symbols.append(sym)
 
-        target = round(c_price * 1.05, 2)
-        sl = round(c_price * 0.95, 2)
-        bullish_pct = 65.0 if c_price >= w_price else 45.0
+        # Calculate live price return since watchlist addition
+        if w_price > 0:
+            p_diff_pct = ((c_price - w_price) / w_price) * 100.0
+        else:
+            p_diff_pct = 0.0
+
+        # Dynamic live bullish percentage score (ranges between 15% - 96%)
+        bullish_pct = round(min(max(55.0 + (p_diff_pct * 2.5), 15.0), 96.0), 1)
+
+        # Live technical target (+7.5% from current) and Stop Loss (-3.5% from current)
+        target = round(c_price * 1.075, 2)
+        sl = round(c_price * 0.965, 2)
+
         holding = item.holding_period or "3-5 days"
         date_str = item.added_at.strftime("%d/%m/%Y") if item.added_at else ""
 
@@ -58,21 +67,17 @@ async def get_watchlist(db: AsyncSession = Depends(get_db)):
                 "id": item.id,
                 "symbol": sym,
                 "name": item.name,
-                "watchlist_price": round(float(w_price), 2),
-                "current_price": round(float(c_price), 2),
-                "bullish_pct": round(float(bullish_pct), 1),
+                "watchlist_price": round(w_price, 2),
+                "current_price": round(c_price, 2),
+                "bullish_pct": bullish_pct,
                 "holding_period": holding,
                 "added_at_date": date_str,
                 "target_price": target,
                 "stop_loss": sl,
-                "added_at": item.added_at.isoformat(),
+                "added_at": item.added_at.isoformat() if item.added_at else "",
                 "notes": item.notes,
             }
         )
-
-    # Spawn background async task to populate/refresh quote cache without blocking user HTTP request
-    if uncached_symbols:
-        asyncio.create_task(data_fetcher.fetch_multiple_quotes_background(uncached_symbols))
 
     return enriched_items
 
@@ -84,7 +89,7 @@ async def add_to_watchlist(req: WatchlistAddRequest, db: AsyncSession = Depends(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail=f"{sym} is already on the watchlist")
 
-    # Fetch current price at the moment of adding to watchlist
+    # Fetch current price at the exact moment of adding to snapshot
     quote = await data_fetcher.fetch_quote(sym)
     if quote and quote.ltp > 0:
         added_price = quote.ltp

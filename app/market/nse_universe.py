@@ -62,6 +62,21 @@ NSE_UNIVERSE: Dict[str, StockInfo] = {
     "UPL": StockInfo("UPL", "UPL Ltd", "Chemicals", "large", ["NIFTY50"]),
     "BPCL": StockInfo("BPCL", "Bharat Petroleum Corp Ltd", "Energy", "large", ["NIFTY50"]),
     "BRITANNIA": StockInfo("BRITANNIA", "Britannia Industries Ltd", "FMCG", "large", ["NIFTY50"]),
+    # High-Volume Intraday Penny Stocks (₹5 - ₹100)
+    "YESBANK": StockInfo("YESBANK", "Yes Bank Ltd", "Banking", "small", ["NIFTYNEXT50"]),
+    "SUZLON": StockInfo("SUZLON", "Suzlon Energy Ltd", "Energy", "mid", ["NIFTYMIDCAP"]),
+    "IDEA": StockInfo("IDEA", "Vodafone Idea Ltd", "Telecom", "mid", ["NIFTYMIDCAP"]),
+    "NHPC": StockInfo("NHPC", "NHPC Ltd", "Power", "mid", ["NIFTYMIDCAP"]),
+    "SJVN": StockInfo("SJVN", "SJVN Ltd", "Power", "mid", ["NIFTYMIDCAP"]),
+    "IOB": StockInfo("IOB", "Indian Overseas Bank", "Banking", "mid", ["NIFTYMIDCAP"]),
+    "UCOBANK": StockInfo("UCOBANK", "UCO Bank", "Banking", "small", ["NIFTYMIDCAP"]),
+    "CENTRALBK": StockInfo("CENTRALBK", "Central Bank of India", "Banking", "small", ["NIFTYMIDCAP"]),
+    "INFIBEAM": StockInfo("INFIBEAM", "Infibeam Avenues Ltd", "IT", "small", ["NIFTYMIDCAP"]),
+    "SOUTHBANK": StockInfo("SOUTHBANK", "South Indian Bank Ltd", "Banking", "small", ["NIFTYMIDCAP"]),
+    "IFCI": StockInfo("IFCI", "IFCI Ltd", "NBFC", "small", ["NIFTYMIDCAP"]),
+    "ALOKINDS": StockInfo("ALOKINDS", "Alok Industries Ltd", "Textiles", "small", ["NIFTYMIDCAP"]),
+    "JPPOWER": StockInfo("JPPOWER", "Jaiprakash Power Ventures Ltd", "Power", "small", ["NIFTYMIDCAP"]),
+    "RPOWER": StockInfo("RPOWER", "Reliance Power Ltd", "Power", "small", ["NIFTYMIDCAP"]),
 }
 
 INDICES: Dict[str, str] = {

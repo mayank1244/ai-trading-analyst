@@ -47,6 +47,7 @@ class ScannerOutput:
     top_buy: List[ScanResult] = field(default_factory=list)
     top_risk_buy: List[ScanResult] = field(default_factory=list)
     intraday_stocks: List[ScanResult] = field(default_factory=list)
+    intraday_penny_stocks: List[ScanResult] = field(default_factory=list)
     top_sell: List[ScanResult] = field(default_factory=list)
     swing_trades: List[ScanResult] = field(default_factory=list)
     momentum_stocks: List[ScanResult] = field(default_factory=list)
@@ -124,7 +125,7 @@ class MarketScanner:
             return None
 
     async def scan_universe(self, symbols: Optional[List[str]] = None) -> ScannerOutput:
-        target_symbols = symbols if symbols else get_nifty50_symbols()
+        target_symbols = symbols if symbols else list(NSE_UNIVERSE.keys())
         index_data = await data_fetcher.fetch_index_data()
 
         tasks = [self.analyze_single_stock(s, index_data) for s in target_symbols]
@@ -160,7 +161,7 @@ class MarketScanner:
                 reverse=True,
             )
 
-        # Intraday Bullish: Score > 55%, positive momentum, tight SL/Target, holding period = Intraday (Same Day)
+        # Intraday Bullish: Score > 55%, positive momentum, tight SL/Target
         intraday_list = []
         for r in sorted(results, key=lambda x: (x.quant_score * 0.7 + x.change_pct * 3), reverse=True):
             if r.quant_score >= 52.0:
@@ -191,6 +192,47 @@ class MarketScanner:
                 )
                 intraday_list.append(intraday_r)
 
+        # Intraday Penny Stocks (Price ₹5 - ₹100), high 1-hour price raise momentum
+        penny_candidates = [
+            r for r in results
+            if 5.0 <= r.current_price <= 100.0
+            and r.quant_score >= 48.0
+        ]
+        penny_sorted = sorted(
+            penny_candidates,
+            key=lambda x: (x.quant_score * 0.6 + x.change_pct * 3.5 + (20 if x.is_high_volume else 0)),
+            reverse=True,
+        )
+
+        intraday_penny_list = []
+        for r in penny_sorted:
+            cp = r.current_price
+            penny_r = ScanResult(
+                symbol=r.symbol,
+                name=r.name,
+                sector=r.sector,
+                current_price=cp,
+                change_pct=r.change_pct,
+                volume=r.volume,
+                quant_score=r.quant_score,
+                recommendation="BUY" if r.quant_score >= 58 else "WATCHLIST",
+                confidence=r.confidence,
+                entry_price=cp,
+                stop_loss=round(cp * 0.985, 2), # 1.5% SL
+                target_1=round(cp * 1.025, 2),  # 2.5% T1 expected in 1 hour
+                target_2=round(cp * 1.045, 2),  # 4.5% T2
+                risk_reward=1.67,
+                holding_period="Intraday (1 Hour Move)",
+                bullish_signals=r.bullish_signals,
+                bearish_signals=r.bearish_signals,
+                is_breakout=r.is_breakout,
+                is_near_support=r.is_near_support,
+                is_high_volume=r.is_high_volume,
+                pattern_name=r.pattern_name,
+                technical_summary=r.technical_summary,
+            )
+            intraday_penny_list.append(penny_r)
+
         top_sell = sorted(
             [r for r in results if r.recommendation in ["SELL", "STRONG_SELL"]],
             key=lambda x: x.quant_score,
@@ -203,6 +245,7 @@ class MarketScanner:
             top_buy=top_buy[:20],
             top_risk_buy=risk_buys[:20],
             intraday_stocks=intraday_list[:20],
+            intraday_penny_stocks=intraday_penny_list[:20],
             top_sell=top_sell[:20],
             swing_trades=top_buy[:10],
             momentum_stocks=momentum[:10],
