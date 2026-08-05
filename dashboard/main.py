@@ -9,6 +9,9 @@ if ROOT_DIR not in sys.path:
 from dashboard.backend_starter import ensure_backend_running
 ensure_backend_running()
 
+from dashboard.components.autorefresh import render_autorefresh_sidebar
+render_autorefresh_sidebar()
+
 import requests
 import streamlit as st
 from dashboard.components.cards import index_card, recommendation_card
