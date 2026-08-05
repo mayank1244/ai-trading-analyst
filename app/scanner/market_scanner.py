@@ -233,6 +233,41 @@ class MarketScanner:
             )
             intraday_penny_list.append(penny_r)
 
+        # Fallback: If no 1-hour high-momentum penny breakouts, populate Day Potential Penny Stocks (₹5 - ₹100)
+        if not intraday_penny_list:
+            day_penny = sorted(
+                [r for r in results if 5.0 <= r.current_price <= 100.0],
+                key=lambda x: x.quant_score,
+                reverse=True,
+            )
+            for r in day_penny[:15]:
+                cp = r.current_price
+                penny_r = ScanResult(
+                    symbol=r.symbol,
+                    name=r.name,
+                    sector=r.sector,
+                    current_price=cp,
+                    change_pct=r.change_pct,
+                    volume=r.volume,
+                    quant_score=r.quant_score,
+                    recommendation=r.recommendation if r.recommendation != "HOLD" else "WATCHLIST",
+                    confidence=r.confidence,
+                    entry_price=cp,
+                    stop_loss=round(cp * 0.97, 2),
+                    target_1=round(cp * 1.04, 2),
+                    target_2=round(cp * 1.08, 2),
+                    risk_reward=1.33,
+                    holding_period="Day Potential (₹5 - ₹100)",
+                    bullish_signals=r.bullish_signals,
+                    bearish_signals=r.bearish_signals,
+                    is_breakout=r.is_breakout,
+                    is_near_support=r.is_near_support,
+                    is_high_volume=r.is_high_volume,
+                    pattern_name=r.pattern_name,
+                    technical_summary=r.technical_summary,
+                )
+                intraday_penny_list.append(penny_r)
+
         top_sell = sorted(
             [r for r in results if r.recommendation in ["SELL", "STRONG_SELL"]],
             key=lambda x: x.quant_score,

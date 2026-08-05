@@ -35,6 +35,43 @@ scan_data = st.session_state.get("scan_data", {})
 intraday_stocks = scan_data.get("intraday_stocks", [])
 intraday_penny_stocks = scan_data.get("intraday_penny_stocks", [])
 
+# Fallback: If API returned output without intraday_penny_stocks, run directly via scanner module
+if not intraday_penny_stocks and intraday_stocks:
+    try:
+        import asyncio
+        from app.scanner.market_scanner import market_scanner
+        loop = asyncio.new_event_loop()
+        res = loop.run_until_complete(market_scanner.scan_universe())
+        intraday_penny_stocks = [
+            {
+                "symbol": r.symbol,
+                "name": r.name,
+                "sector": r.sector,
+                "current_price": r.current_price,
+                "change_pct": r.change_pct,
+                "volume": r.volume,
+                "quant_score": r.quant_score,
+                "recommendation": r.recommendation,
+                "confidence": r.confidence,
+                "entry_price": r.entry_price,
+                "stop_loss": r.stop_loss,
+                "target_1": r.target_1,
+                "target_2": r.target_2,
+                "risk_reward": r.risk_reward,
+                "holding_period": r.holding_period,
+                "bullish_signals": r.bullish_signals,
+                "bearish_signals": r.bearish_signals,
+                "is_breakout": r.is_breakout,
+                "is_near_support": r.is_near_support,
+                "is_high_volume": r.is_high_volume,
+                "pattern_name": r.pattern_name,
+                "technical_summary": r.technical_summary,
+            }
+            for r in res.intraday_penny_stocks
+        ]
+    except Exception:
+        pass
+
 def add_stock_to_watchlist(symbol: str, holding_period: str = "Intraday"):
     """Helper to add stock to watchlist via API."""
     try:
@@ -91,11 +128,26 @@ with tab1:
 
 with tab2:
     st.subheader("🚀 Potential Penny Stocks (Price ₹5 – ₹100)")
-    st.caption("Criteria: Stocks priced between ₹5 and ₹100 showing high volume surge & price raise momentum for the next 1 hour.")
+    st.caption("Criteria: Stocks priced between ₹5 and ₹100 showing high volume surge & price raise momentum.")
 
     if not intraday_penny_stocks:
-        st.info("Click '⚡ Run Intraday Market Scan' above to scan for potential 1-hour penny stock setups.")
+        st.info("Click '⚡ Run Intraday Market Scan' above to scan for potential penny stock setups.")
     else:
+        is_day_fallback = any("Day Potential" in str(s.get("holding_period", "")) for s in intraday_penny_stocks)
+
+        if is_day_fallback:
+            st.markdown(
+                """
+                <div style="background-color: #2b0b0b; border: 2px solid #ef4444; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+                    <h4 style="color: #ef4444; margin: 0;">🔴 Today's Potential Penny Stocks List (Price Range: ₹5 – ₹100)</h4>
+                    <p style="color: #fca5a5; margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">
+                        No strict 1-hour micro-breakout detected right now. Showing today's top-performing penny stocks in the ₹5–₹100 price range.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
         penny_symbols = [s.get("symbol") for s in intraday_penny_stocks if s.get("symbol")]
         col_sel, col_act = st.columns([4, 1])
         with col_sel:
