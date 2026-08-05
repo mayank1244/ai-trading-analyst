@@ -8,15 +8,18 @@ if ROOT_DIR not in sys.path:
 from dashboard.backend_starter import ensure_backend_running
 ensure_backend_running()
 
+from dashboard.components.autorefresh import render_autorefresh_sidebar
+render_autorefresh_sidebar()
+
 import requests
 import streamlit as st
 from dashboard.components.cards import recommendation_card
-from dashboard.components.charts import score_radar_chart
+from dashboard.components.charts import score_radar_chart, why_up_down_chart
 
 API_BASE = "http://localhost:8000/api/v1"
 
 st.set_page_config(page_title="Stock Analysis | AI Trading Analyst", layout="wide")
-st.title("📈 Stock Analysis")
+st.title("📈 Stock Analysis & Movement Predictor")
 
 symbol = st.text_input("Enter NSE Stock Symbol (e.g. RELIANCE, TCS, INFY):", value="RELIANCE").upper().strip()
 
@@ -57,6 +60,54 @@ if rec:
             except Exception as exc:
                 st.error(f"Error adding {symbol}: {exc}")
 
+    st.markdown("---")
+    st.subheader("📊 Why It Might Go UP vs. Why It Might Go DOWN")
+    
+    # 1. UP vs DOWN Visual Graph
+    bullish_signals = rec.get("bullish_signals", [])
+    bearish_signals = rec.get("bearish_signals", [])
+    quant_score = float(rec.get("quant_score", 50.0))
+
+    fig_up_down = why_up_down_chart(bullish_signals, bearish_signals, quant_score)
+    st.plotly_chart(fig_up_down, use_container_width=True)
+
+    # 2. Detailed Drivers Comparison Side-by-Side
+    col_up, col_down = st.columns(2)
+
+    with col_up:
+        st.markdown(
+            """
+            <div style="background-color: #0d2612; border: 1px solid #26a641; border-radius: 8px; padding: 14px;">
+                <h4 style="color: #4ac26b; margin: 0 0 10px 0;">🚀 Why It Might Go UP (Bullish Drivers)</h4>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.write("")
+        if bullish_signals:
+            for s in bullish_signals:
+                st.markdown(f"🟢 **{s}**")
+        else:
+            st.info("No strong bullish momentum driver detected currently.")
+
+    with col_down:
+        st.markdown(
+            """
+            <div style="background-color: #2b0b0b; border: 1px solid #ef4444; border-radius: 8px; padding: 14px;">
+                <h4 style="color: #f87171; margin: 0 0 10px 0;">🔻 Why It Might Go DOWN (Bearish Risks)</h4>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.write("")
+        if bearish_signals:
+            for s in bearish_signals:
+                st.markdown(f"🔴 **{s}**")
+        else:
+            st.info("No significant bearish downside risk detected currently.")
+
+    st.markdown("---")
+
     col1, col2 = st.columns([1, 1])
 
     with col1:
@@ -75,15 +126,5 @@ if rec:
         st.plotly_chart(fig_radar, use_container_width=True)
 
     with col2:
-        st.subheader("Signals Detected")
-        st.write("🟢 **Bullish Signals:**")
-        for s in rec.get("bullish_signals", []):
-            st.markdown(f"- {s}")
-
-        st.write("🔴 **Bearish Signals:**")
-        for s in rec.get("bearish_signals", []):
-            st.markdown(f"- {s}")
-
-    st.markdown("---")
-    st.subheader("Detailed Technical & AI Explanation")
-    st.markdown(rec.get("detailed_explanation", "No explanation available."))
+        st.subheader("Detailed Technical & AI Analysis Summary")
+        st.markdown(rec.get("detailed_explanation", "No explanation available."))

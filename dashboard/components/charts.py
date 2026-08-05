@@ -109,3 +109,39 @@ def score_radar_chart(scores: dict) -> go.Figure:
         margin=dict(l=40, r=40, t=40, b=40),
     )
     return fig
+
+
+def why_up_down_chart(bullish_signals: List[str], bearish_signals: List[str], quant_score: float = 50.0) -> go.Figure:
+    """Build a visual comparison chart showing why stock might go UP vs DOWN."""
+    b_count = max(len(bullish_signals), 1)
+    br_count = max(len(bearish_signals), 1)
+
+    total = b_count + br_count
+    up_pct = round(quant_score, 1) if quant_score != 50.0 else round((b_count / total) * 100, 1)
+    down_pct = round(100.0 - up_pct, 1)
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Bar(
+            y=["🟢 Upside Driver (UP)", "🔴 Downside Risk (DOWN)"],
+            x=[up_pct, down_pct],
+            orientation="h",
+            marker=dict(color=["#26a641", "#da3633"]),
+            text=[f"🟢 UP Probability: {up_pct}%", f"🔴 DOWN Risk: {down_pct}%"],
+            textposition="auto",
+            hovertemplate="%{y}: %{x}%<extra></extra>",
+        )
+    )
+
+    fig.update_layout(
+        title="<b>Why It Might Go UP vs. Why It Might Go DOWN</b>",
+        paper_bgcolor=PAPER_BG,
+        plot_bgcolor=PLOT_BG,
+        font=dict(color=TEXT_COLOR),
+        height=260,
+        xaxis=dict(range=[0, 100], title="Probability / Signal Weight (%)", gridcolor=GRID_COLOR),
+        yaxis=dict(gridcolor=GRID_COLOR),
+        margin=dict(l=40, r=40, t=50, b=40),
+    )
+    return fig
