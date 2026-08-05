@@ -127,27 +127,21 @@ with tab1:
                     add_stock_to_watchlist(sym)
 
 with tab2:
-    st.subheader("🚀 Potential Penny Stocks (Price ₹5 – ₹100)")
-    st.caption("Criteria: Stocks priced between ₹5 and ₹100 showing high volume surge & price raise momentum.")
+    st.markdown(
+        """
+        <div style="background-color: #2b0b0b; border: 2px solid #ef4444; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+            <h3 style="color: #ef4444; margin: 0;">🔴 Day Potential Penny Stocks List (Price Range: ₹5 – ₹100)</h3>
+            <p style="color: #fca5a5; margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">
+                High-potential intraday penny stocks priced between ₹5 and ₹100 showing volume surges & price raise momentum.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if not intraday_penny_stocks:
         st.info("Click '⚡ Run Intraday Market Scan' above to scan for potential penny stock setups.")
     else:
-        is_day_fallback = any("Day Potential" in str(s.get("holding_period", "")) for s in intraday_penny_stocks)
-
-        if is_day_fallback:
-            st.markdown(
-                """
-                <div style="background-color: #2b0b0b; border: 2px solid #ef4444; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
-                    <h4 style="color: #ef4444; margin: 0;">🔴 Today's Potential Penny Stocks List (Price Range: ₹5 – ₹100)</h4>
-                    <p style="color: #fca5a5; margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">
-                        No strict 1-hour micro-breakout detected right now. Showing today's top-performing penny stocks in the ₹5–₹100 price range.
-                    </p>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
         penny_symbols = [s.get("symbol") for s in intraday_penny_stocks if s.get("symbol")]
         col_sel, col_act = st.columns([4, 1])
         with col_sel:
