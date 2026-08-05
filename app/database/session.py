@@ -48,6 +48,24 @@ async def init_db() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database initialised successfully")
+
+        # Seed initial default watchlist items if empty
+        async with AsyncSessionLocal() as session:
+            from sqlalchemy import select
+            from app.database.models import Watchlist
+            res = await session.execute(select(Watchlist))
+            if not res.scalars().all():
+                seeds = [
+                    Watchlist(symbol="TATAELXSI", name="TATAELXSI", watchlist_price=3737.0, holding_period="3-5 days", notes="Sample Seed"),
+                    Watchlist(symbol="DIVISLAB", name="DIVISLAB", watchlist_price=8378.0, holding_period="3-5 days", notes="Sample Seed"),
+                    Watchlist(symbol="TITAN", name="TITAN", watchlist_price=4935.0, holding_period="3-5 days", notes="Sample Seed"),
+                    Watchlist(symbol="HCLTECH", name="HCLTECH", watchlist_price=1369.9, holding_period="3-5 days", notes="Sample Seed"),
+                    Watchlist(symbol="HINDALCO", name="HINDALCO", watchlist_price=1020.0, holding_period="3-5 days", notes="Sample Seed"),
+                    Watchlist(symbol="UPL", name="UPL", watchlist_price=581.9, holding_period="3-5 days", notes="Sample Seed"),
+                ]
+                session.add_all(seeds)
+                await session.commit()
+                logger.info("Seeded default Watchlist stocks")
     except Exception as exc:
         logger.error("Database initialisation failed: {}", exc)
         raise
