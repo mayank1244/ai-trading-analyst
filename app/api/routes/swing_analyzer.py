@@ -27,6 +27,14 @@ async def analyze_swing_stock(symbol: str) -> Dict[str, Any]:
         if len(df) < 50:
             raise HTTPException(status_code=400, detail="Need at least 50 daily candles for swing analysis.")
 
+        # Fetch live real-time quote for up-to-the-minute LTP
+        quote = await data_fetcher.fetch_quote(clean_symbol)
+        live_ltp = quote.ltp if (quote and quote.ltp and quote.ltp > 0) else None
+
+        # Update or append latest row with real-time live price if available
+        if live_ltp:
+            df.loc[df.index[-1], "Close"] = live_ltp
+
         closes = df["Close"].values
         highs = df["High"].values
         lows = df["Low"].values
