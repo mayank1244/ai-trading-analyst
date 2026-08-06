@@ -327,3 +327,111 @@ def live_analyzer_chart(candles: List[dict], symbol: str, timeframe: str = "15m"
     fig.update_yaxes(gridcolor=GRID_COLOR, showgrid=True)
 
     return fig
+
+
+def swing_analyzer_chart(candles: list, symbol: str) -> go.Figure:
+    """Build a 3-panel Daily Swing Trading chart (Price+EMA20/50/200, Volume, Daily RSI)."""
+    if not candles:
+        fig = go.Figure()
+        fig.update_layout(
+            title=f"No daily chart data for {symbol}",
+            paper_bgcolor=PAPER_BG,
+            plot_bgcolor=PLOT_BG,
+            font=dict(color=TEXT_COLOR),
+        )
+        return fig
+
+    times = [c["time"] for c in candles]
+    opens = [c["open"] for c in candles]
+    highs = [c["high"] for c in candles]
+    lows = [c["low"] for c in candles]
+    closes = [c["close"] for c in candles]
+    volumes = [c["volume"] for c in candles]
+    ema_20s = [c.get("ema_20") for c in candles]
+    ema_50s = [c.get("ema_50") for c in candles]
+    ema_200s = [c.get("ema_200") for c in candles]
+    rsis = [c.get("rsi") for c in candles]
+
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.04,
+        row_heights=[0.55, 0.20, 0.25],
+        subplot_titles=(
+            f"📈 {symbol} Daily Price + EMA 20/50/200",
+            "📊 Volume (Surge)",
+            "🟢 Daily RSI (14)",
+        ),
+    )
+
+    # 1. Price Candlesticks
+    fig.add_trace(
+        go.Candlestick(
+            x=times,
+            open=opens,
+            high=highs,
+            low=lows,
+            close=closes,
+            name="OHLC",
+            increasing_line_color="#26a641",
+            decreasing_line_color="#ef4444",
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Daily EMAs
+    if any(ema_20s):
+        fig.add_trace(
+            go.Scatter(x=times, y=ema_20s, name="EMA 20 (Daily)", line=dict(color="#eab308", width=2)),
+            row=1,
+            col=1,
+        )
+    if any(ema_50s):
+        fig.add_trace(
+            go.Scatter(x=times, y=ema_50s, name="EMA 50 (Daily)", line=dict(color="#3b82f6", width=2)),
+            row=1,
+            col=1,
+        )
+    if any(ema_200s):
+        fig.add_trace(
+            go.Scatter(x=times, y=ema_200s, name="EMA 200 (Daily)", line=dict(color="#a855f7", width=1.8, dash="dash")),
+            row=1,
+            col=1,
+        )
+
+    # 2. Volume
+    vol_colors = ["#26a641" if (c is not None and o is not None and c >= o) else "#ef4444" for c, o in zip(closes, opens)]
+    fig.add_trace(
+        go.Bar(x=times, y=volumes, name="Volume", marker=dict(color=vol_colors)),
+        row=2,
+        col=1,
+    )
+
+    # 3. Daily RSI
+    if any(rsis):
+        fig.add_trace(
+            go.Scatter(x=times, y=rsis, name="RSI (14)", line=dict(color="#38bdf8", width=2)),
+            row=3,
+            col=1,
+        )
+        fig.add_hline(y=70, line_dash="dash", line_color="#ef4444", row=3, col=1, annotation_text="Overbought (70)")
+        fig.add_hline(y=50, line_dash="dot", line_color="#94a3b8", row=3, col=1, annotation_text="50 Line")
+        fig.add_hline(y=40, line_dash="dash", line_color="#26a641", row=3, col=1, annotation_text="Oversold (40)")
+
+    fig.update_layout(
+        paper_bgcolor=PAPER_BG,
+        plot_bgcolor=PLOT_BG,
+        font=dict(color=TEXT_COLOR),
+        height=750,
+        margin=dict(l=40, r=40, t=40, b=40),
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis_rangeslider_visible=False,
+    )
+
+    fig.update_xaxes(gridcolor=GRID_COLOR, showgrid=True)
+    fig.update_yaxes(gridcolor=GRID_COLOR, showgrid=True)
+
+    return fig
