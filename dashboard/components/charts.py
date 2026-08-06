@@ -145,3 +145,185 @@ def why_up_down_chart(bullish_signals: List[str], bearish_signals: List[str], qu
         margin=dict(l=40, r=40, t=50, b=40),
     )
     return fig
+
+
+def live_analyzer_chart(candles: List[dict], symbol: str, timeframe: str = "15m") -> go.Figure:
+    """Build a TradingView-style 4-panel interactive Plotly chart with Candlesticks, EMAs, BB, Volume, RSI, & MACD."""
+    if not candles:
+        fig = go.Figure()
+        fig.update_layout(
+            title=f"No chart data available for {symbol}",
+            paper_bgcolor=PAPER_BG,
+            font=dict(color=TEXT_COLOR),
+        )
+        return fig
+
+    times = [c["time"] for c in candles]
+    opens = [c["open"] for c in candles]
+    highs = [c["high"] for c in candles]
+    lows = [c["low"] for c in candles]
+    closes = [c["close"] for c in candles]
+    volumes = [c["volume"] for c in candles]
+
+    ema_20s = [c.get("ema_20") for c in candles]
+    ema_50s = [c.get("ema_50") for c in candles]
+    bb_uppers = [c.get("bb_upper") for c in candles]
+    bb_lowers = [c.get("bb_lower") for c in candles]
+    vwaps = [c.get("vwap") for c in candles]
+
+    rsis = [c.get("rsi") for c in candles]
+    macds = [c.get("macd") for c in candles]
+    macd_sigs = [c.get("macd_sig") for c in candles]
+    macd_hists = [c.get("macd_hist") for c in candles]
+
+    fig = make_subplots(
+        rows=4,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.03,
+        row_heights=[0.48, 0.14, 0.19, 0.19],
+        subplot_titles=(
+            f"<b>{symbol} ({timeframe.upper()}) Live Chart — Price, EMAs & Bollinger Bands</b>",
+            "<b>Volume</b>",
+            "<b>RSI (14) Indicator</b>",
+            "<b>MACD (12, 26, 9)</b>",
+        ),
+    )
+
+    # 1. Main Candlesticks (Row 1)
+    fig.add_trace(
+        go.Candlestick(
+            x=times,
+            open=opens,
+            high=highs,
+            low=lows,
+            close=closes,
+            name=f"{symbol} OHLC",
+            increasing=dict(line=dict(color="#26a641", width=1.2), fillcolor="#26a641"),
+            decreasing=dict(line=dict(color="#ef4444", width=1.2), fillcolor="#ef4444"),
+        ),
+        row=1,
+        col=1,
+    )
+
+    # EMA 20 & EMA 50
+    if any(ema_20s):
+        fig.add_trace(
+            go.Scatter(x=times, y=ema_20s, name="EMA 20", line=dict(color="#eab308", width=1.8)),
+            row=1,
+            col=1,
+        )
+    if any(ema_50s):
+        fig.add_trace(
+            go.Scatter(x=times, y=ema_50s, name="EMA 50", line=dict(color="#3b82f6", width=1.8)),
+            row=1,
+            col=1,
+        )
+
+    # Bollinger Bands
+    if any(bb_uppers) and any(bb_lowers):
+        fig.add_trace(
+            go.Scatter(
+                x=times,
+                y=bb_uppers,
+                name="BB Upper",
+                line=dict(color="#a855f7", width=1, dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=times,
+                y=bb_lowers,
+                name="BB Lower",
+                line=dict(color="#a855f7", width=1, dash="dot"),
+                fill="tonexty",
+                fillcolor="rgba(168,85,247,0.06)",
+            ),
+            row=1,
+            col=1,
+        )
+
+    # VWAP
+    if any(vwaps):
+        fig.add_trace(
+            go.Scatter(
+                x=times,
+                y=vwaps,
+                name="VWAP",
+                line=dict(color="#ec4899", width=1.5, dash="dash"),
+            ),
+            row=1,
+            col=1,
+        )
+
+    # 2. Volume (Row 2)
+    vol_colors = ["#26a641" if c >= o else "#ef4444" for c, o in zip(closes, opens)]
+    fig.add_trace(
+        go.Bar(x=times, y=volumes, name="Volume", marker=dict(color=vol_colors)),
+        row=2,
+        col=1,
+    )
+
+    # 3. RSI Subplot (Row 3)
+    if any(rsis):
+        fig.add_trace(
+            go.Scatter(x=times, y=rsis, name="RSI (14)", line=dict(color="#38bdf8", width=1.8)),
+            row=3,
+            col=1,
+        )
+        fig.add_hline(
+            y=70,
+            line_dash="dash",
+            line_color="#ef4444",
+            row=3,
+            col=1,
+            annotation_text="Overbought (70)",
+        )
+        fig.add_hline(
+            y=30,
+            line_dash="dash",
+            line_color="#26a641",
+            row=3,
+            col=1,
+            annotation_text="Oversold (30)",
+        )
+
+    # 4. MACD Subplot (Row 4)
+    if any(macds) and any(macd_sigs):
+        fig.add_trace(
+            go.Scatter(x=times, y=macds, name="MACD", line=dict(color="#3b82f6", width=1.8)),
+            row=4,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=times, y=macd_sigs, name="Signal Line", line=dict(color="#f97316", width=1.5)
+            ),
+            row=4,
+            col=1,
+        )
+        if any(macd_hists):
+            hist_colors = ["#26a641" if h >= 0 else "#ef4444" for h in macd_hists]
+            fig.add_trace(
+                go.Bar(x=times, y=macd_hists, name="MACD Hist", marker=dict(color=hist_colors)),
+                row=4,
+                col=1,
+            )
+
+    fig.update_layout(
+        paper_bgcolor=PAPER_BG,
+        plot_bgcolor=PLOT_BG,
+        font=dict(color=TEXT_COLOR),
+        height=820,
+        margin=dict(l=40, r=40, t=40, b=40),
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis_rangeslider_visible=False,
+    )
+
+    fig.update_xaxes(gridcolor=GRID_COLOR, showgrid=True)
+    fig.update_yaxes(gridcolor=GRID_COLOR, showgrid=True)
+
+    return fig
