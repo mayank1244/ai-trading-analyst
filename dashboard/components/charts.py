@@ -305,7 +305,7 @@ def live_analyzer_chart(candles: List[dict], symbol: str, timeframe: str = "15m"
             col=1,
         )
         if any(macd_hists):
-            hist_colors = ["#26a641" if h >= 0 else "#ef4444" for h in macd_hists]
+            hist_colors = ["#26a641" if (h is not None and h >= 0) else "#ef4444" for h in macd_hists]
             fig.add_trace(
                 go.Bar(x=times, y=macd_hists, name="MACD Hist", marker=dict(color=hist_colors)),
                 row=4,

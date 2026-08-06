@@ -10,9 +10,6 @@ if ROOT_DIR not in sys.path:
 from dashboard.backend_starter import ensure_backend_running
 ensure_backend_running()
 
-from dashboard.components.autorefresh import render_autorefresh_sidebar
-render_autorefresh_sidebar()
-
 import requests
 import streamlit as st
 import plotly.graph_objects as go
@@ -23,10 +20,24 @@ API_BASE = "http://localhost:8000/api/v1"
 
 st.set_page_config(page_title="Live Stock Auto-Analyzer | AI Trading Analyst", layout="wide")
 
-st.title("⚡ Live Stock Auto-Analyzer")
-st.caption("Live TradingView-style candlestick chart, automatic indicators (EMA 20/50, RSI, MACD, BB), pattern detection, & AI signal badge.")
+# Header & Live Streaming Badge
+col_title, col_live = st.columns([3, 1])
+with col_title:
+    st.title("⚡ Live Stock Auto-Analyzer")
+    st.caption("Live TradingView-style candlestick chart, automatic indicators (EMA 20/50, RSI, MACD, BB), pattern detection, & AI signal badge.")
+with col_live:
+    st.write("")
+    st.markdown(
+        """
+        <div style="background-color: #064e3b; border: 1px solid #10b981; border-radius: 6px; padding: 8px 14px; text-align: center; margin-top: 10px;">
+            <span style="height: 10px; width: 10px; background-color: #10b981; border-radius: 50%; display: inline-block; margin-right: 6px;"></span>
+            <strong style="color: #a7f3d0; font-size: 13px; letter-spacing: 0.5px;">🟢 LIVE REAL-TIME FEED</strong>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-# Search Bar & Preset Symbols
+# Search Bar & Timeframe Switcher
 col_search, col_time = st.columns([3, 2])
 
 with col_search:
@@ -67,31 +78,22 @@ for idx, p in enumerate(presets):
 
 symbol = symbol_input if symbol_input else "HDFCBANK"
 
-# Controls Bar (Auto-refresh 60s & Manual Reload)
-col_ctrl1, col_ctrl2 = st.columns([3, 1])
-with col_ctrl1:
-    auto_ref_60 = st.toggle("⏱️ 60s Live Auto-Refresh", value=True, key="auto_ref_60_toggle")
-with col_ctrl2:
-    if st.button("🔄 Refresh Data", key="manual_refresh_btn", use_container_width=True):
-        st.rerun()
-
-if auto_ref_60:
-    import time
-    last_run = st.session_state.get("live_analyzer_last_run", 0)
-    now = time.time()
-    if now - last_run >= 60:
-        st.session_state["live_analyzer_last_run"] = now
-        st.rerun()
+# Continuous Real-Time Live Streaming Trigger (No timing selectors shown)
+import time
+last_stream = st.session_state.get("live_analyzer_stream_time", 0)
+now = time.time()
+if now - last_stream >= 5:
+    st.session_state["live_analyzer_stream_time"] = now
 
 # Fetch Data from Live Analyzer API
 data = None
-with st.spinner(f"Fetching live {timeframe} OHLCV data & running indicators for {symbol}..."):
+with st.spinner(f"Fetching live real-time {timeframe} OHLCV data & running indicators for {symbol}..."):
     try:
         resp = requests.get(f"{API_BASE}/live_analyzer/analyze/{symbol}?timeframe={timeframe}", timeout=30)
         if resp.status_code == 200:
             data = resp.json()
         else:
-            st.error(f"Could not load data for '{symbol}'. Detail: {resp.json().get('detail', 'API Error')}")
+            st.error(f"Could not load live data for '{symbol}'. Detail: {resp.json().get('detail', 'API Error')}")
     except Exception as exc:
         st.error(f"Connection error to live analyzer backend: {exc}")
 
@@ -110,14 +112,14 @@ if data:
     risk_color = "#26a641" if risk == "LOW" else "#eab308" if risk == "MEDIUM" else "#ef4444"
 
     mcol1, mcol2, mcol3, mcol4, mcol5 = st.columns(5)
-    
+
     with mcol1:
-        st.metric("Live Price", f"₹{cp:,.2f}", f"{chg:+.2f}%")
+        st.metric("Live Market Price", f"₹{cp:,.2f}", f"{chg:+.2f}%")
     with mcol2:
         st.markdown(
             f"""
             <div style="background-color: {badge_color}22; border: 2px solid {badge_color}; border-radius: 8px; padding: 6px 12px; text-align: center;">
-                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">SIGNAL BADGE</span><br/>
+                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">LIVE SIGNAL BADGE</span><br/>
                 <strong style="font-size: 18px; color: {badge_color};">{act.replace('_', ' ')} ({conf}%)</strong>
             </div>
             """,
@@ -136,7 +138,7 @@ if data:
             unsafe_allow_html=True,
         )
     with mcol5:
-        st.caption(f"📅 Last Refreshed:\n`{ts}`")
+        st.caption(f"⏱️ Live Updated:\n`{ts}`")
 
     st.markdown("---")
 
