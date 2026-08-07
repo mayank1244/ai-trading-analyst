@@ -51,7 +51,7 @@ API_BASE = "http://localhost:8000/api/v1"
 st.set_page_config(page_title="Stock Analysis | AI Trading Analyst", layout="wide")
 st.title("📈 Stock Analysis & Movement Predictor")
 
-symbol = st.text_input("Enter NSE Stock Symbol (e.g. RELIANCE, TCS, INFY):", value="RELIANCE").upper().strip()
+symbol = st.text_input("Enter NSE Stock Symbol (e.g. RELIANCE, TCS, INFY):", value="", placeholder="e.g. RELIANCE, TCS, INFY").upper().strip()
 
 col_btn, col_chk = st.columns([1, 3])
 with col_btn:
@@ -59,7 +59,9 @@ with col_btn:
 with col_chk:
     skip_ai = st.checkbox("Quick Mode (Skip AI reasoning for faster result)", value=False)
 
-if analyze_btn or symbol:
+if not symbol:
+    st.info("🔎 Enter a stock symbol above (e.g., RELIANCE, TCS, INFY) to analyze its overall quantitative score & movement predictor.")
+elif analyze_btn or symbol:
     with st.spinner(f"Analyzing {symbol}..."):
         try:
             resp = requests.get(f"{API_BASE}/analysis/{symbol}?skip_ai={skip_ai}", timeout=25)

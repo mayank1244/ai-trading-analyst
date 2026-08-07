@@ -29,7 +29,7 @@ col_search, col_space = st.columns([3, 1])
 with col_search:
     symbol_input = st.text_input(
         "🔎 Enter NSE/BSE Stock Symbol for Swing Analysis:",
-        value=st.session_state.get("selected_swing_symbol", "DEEPAKFERT"),
+        value=st.session_state.get("selected_swing_symbol", ""),
         placeholder="e.g. DEEPAKFERT, TATAMOTORS, TITAN, RELIANCE, DIVISLAB",
         key="swing_symbol_input_box",
     ).upper().strip()
@@ -44,7 +44,11 @@ for idx, p in enumerate(presets):
         st.session_state["selected_swing_symbol"] = p
         st.rerun()
 
-symbol = symbol_input if symbol_input else "DEEPAKFERT"
+symbol = symbol_input if symbol_input else ""
+
+if not symbol:
+    st.info("🔎 Enter a stock symbol above (e.g., TATAMOTORS, RELIANCE) or click a candidate button to view 3–8 day swing analysis.")
+    st.stop()
 
 # Fetch Data from Swing Analyzer API
 data = None
@@ -73,13 +77,13 @@ if data:
     mcol1, mcol2, mcol3, mcol4 = st.columns(4)
 
     with mcol1:
-        st.metric("Current Daily Price", f"₹{cp:,.2f}")
+        st.metric("Live Daily Close", f"₹{cp:,.2f}")
     with mcol2:
         st.markdown(
             f"""
             <div style="background-color: {badge_color}22; border: 2px solid {badge_color}; border-radius: 8px; padding: 6px 12px; text-align: center;">
-                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">SWING VERDICT</span><br/>
-                <strong style="font-size: 16px; color: {badge_color};">{verdict} ({conf}%)</strong>
+                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">SWING ACTION BADGE</span><br/>
+                <strong style="font-size: 16px; color: {badge_color};">{act} ({conf}%)</strong>
             </div>
             """,
             unsafe_allow_html=True,
@@ -88,79 +92,79 @@ if data:
         st.markdown(
             f"""
             <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 6px 12px; text-align: center;">
-                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">DETECTED SETUP</span><br/>
+                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">SETUP IDENTIFIED</span><br/>
                 <strong style="font-size: 14px; color: #58a6ff;">{setup}</strong>
             </div>
             """,
             unsafe_allow_html=True,
         )
     with mcol4:
-        st.caption(f"📅 Daily Analysis Updated:\n`{ts}`")
+        st.caption(f"⏱️ Daily Analysis Time:\n`{ts}`")
 
     st.markdown("---")
 
-    # 2. Swing Trade Execution Plan & 5-Point Checklist Cards
-    pcol1, pcol2 = st.columns(2)
+    # 2. Daily Swing Chart (Plotly)
+    candles = data.get("candles", [])
+    if candles:
+        fig_chart = swing_analyzer_chart(candles, symbol)
+        st.plotly_chart(fig_chart, use_container_width=True)
 
-    with pcol1:
-        st.markdown(
-            """
-            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px;">
-                <h4 style="color: #26a641; margin-top: 0;">🎯 3–8 Day Swing Trade Execution Plan</h4>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.write("")
-        st.markdown(f"**Holding Period:** `{plan.get('holding_period', '3-8 Days')}`")
-        st.markdown(f"📥 **Entry Range:** `{plan.get('entry_range', '')}`")
-        st.markdown(f"🛡️ **Stop Loss:** `₹{plan.get('stop_loss', 0):,.2f}` (-2.5%)")
-        st.markdown(f"🎯 **Target 1 (+5%):** `₹{plan.get('target_1', 0):,.2f}`")
-        st.markdown(f"🚀 **Target 2 (+8%):** `₹{plan.get('target_2', 0):,.2f}`")
-        st.markdown(f"⚖️ **Risk : Reward Ratio:** `{plan.get('risk_reward_ratio', '1 : 2.5')}`")
+    st.markdown("---")
 
-    with pcol2:
-        st.markdown(
-            """
-            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px;">
-                <h4 style="color: #58a6ff; margin-top: 0;">📋 5-Point Swing Checklist Verification</h4>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.write("")
-        checklist = data.get("checklist", [])
-        for item in checklist:
-            icon = "✅" if item.get("passed") else "❌"
-            color = "#a7f3d0" if item.get("passed") else "#fca5a5"
+    # 3. Trade Plan & 5-Point Checklist Side-by-Side
+    col_plan, col_check = st.columns([1, 1])
+
+    with col_plan:
+        st.subheader("🎯 3-8 Day Swing Trade Execution Plan")
+        if plan:
             st.markdown(
                 f"""
-                <div style="margin-bottom: 8px;">
-                    {icon} <strong style="color: {color};">{item.get('name')}</strong><br/>
-                    <span style="font-size: 13px; color: #94a3b8; margin-left: 24px;">{item.get('detail')}</span>
+                <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px;">
+                    <p style="margin-bottom: 8px;"><b>📥 Buy Entry Range:</b> <span style="color: #58a6ff; font-size: 16px; font-weight: bold;">₹{plan.get('entry_low', 0):,.2f} – ₹{plan.get('entry_high', 0):,.2f}</span></p>
+                    <p style="margin-bottom: 8px;"><b>🛡️ Stop Loss (Exit):</b> <span style="color: #ef4444; font-size: 16px; font-weight: bold;">₹{plan.get('stop_loss', 0):,.2f}</span> ({plan.get('stop_loss_pct', -2.5):+.1f}%)</p>
+                    <p style="margin-bottom: 8px;"><b>🎯 Target 1 (50% Quantity):</b> <span style="color: #26a641; font-size: 16px; font-weight: bold;">₹{plan.get('target_1', 0):,.2f}</span> ({plan.get('target_1_pct', 5.0):+.1f}%)</p>
+                    <p style="margin-bottom: 8px;"><b>🚀 Target 2 (Runner):</b> <span style="color: #26a641; font-size: 16px; font-weight: bold;">₹{plan.get('target_2', 0):,.2f}</span> ({plan.get('target_2_pct', 8.0):+.1f}%)</p>
+                    <hr style="border-color: #30363d;"/>
+                    <p style="margin-bottom: 0;"><b>⚖️ Risk-to-Reward Ratio:</b> <span style="color: #a7f3d0; font-weight: bold;">1 : {plan.get('risk_reward', 2.0):.1f}</span></p>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
+        else:
+            st.info("No active buy trade plan — criteria not met.")
 
-    st.markdown("---")
+    with col_check:
+        st.subheader("📋 5-Point Swing Criteria Checklist")
+        chk = data.get("checklist", {})
+        score = data.get("checklist_score", 0)
 
-    # 3. Interactive Daily Swing Candlestick Chart
-    candles = data.get("candles", [])
-    fig_chart = swing_analyzer_chart(candles, symbol)
-    st.plotly_chart(fig_chart, use_container_width=True)
+        st.markdown(f"**Overall Score:** `{score} / 5 Criteria Passed` — **{verdict}**")
+        st.markdown("")
 
-    st.markdown("---")
+        checks_def = [
+            ("check_1_trend", "1. Trend Stack (Price > EMA 20 > 50 > 200)"),
+            ("check_2_setup", "2. Swing Setup (EMA Pullback or Range Breakout)"),
+            ("check_3_rsi", "3. RSI Momentum (Daily RSI 14 in 50–65 Zone)"),
+            ("check_4_volume", "4. Volume Surge (>1.2x 20-Day Average)"),
+            ("check_5_rr", "5. Risk-Reward Ratio (Target ÷ Risk >= 1:2)"),
+        ]
 
-    # 4. Indicator Deep Dive Summary
-    st.subheader("📊 Key Indicator Readings (Daily Chart)")
-    icol1, icol2, icol3, icol4 = st.columns(4)
+        for key, label in checks_def:
+            cdata = chk.get(key, {})
+            passed = cdata.get("pass", False)
+            val = cdata.get("val", "")
+            icon = "✅ PASS" if passed else "❌ FAIL"
+            color = "#26a641" if passed else "#ef4444"
 
-    with icol1:
-        st.write(f"**Daily EMA 20:** ₹{data.get('ema_20', 0):,.2f}")
-    with icol2:
-        st.write(f"**Daily EMA 50:** ₹{data.get('ema_50', 0):,.2f}")
-    with icol3:
-        st.write(f"**Daily RSI (14):** {data.get('rsi', 50)}")
-    with icol4:
-        st.write(f"**Volume Ratio:** {data.get('volume_surge_ratio', 1.0)}x 20-day avg")
+            st.markdown(
+                f"""
+                <div style="background-color: #161b22; border-left: 4px solid {color}; border-radius: 4px; padding: 8px 12px; margin-bottom: 6px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span><b>{label}</b></span>
+                        <span style="color: {color}; font-weight: bold;">{icon}</span>
+                    </div>
+                    <small style="color: #8b949e;">Detail: {val}</small>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )

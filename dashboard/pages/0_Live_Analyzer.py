@@ -43,7 +43,7 @@ col_search, col_time = st.columns([3, 2])
 with col_search:
     symbol_input = st.text_input(
         "🔎 Enter NSE/BSE Stock Symbol:",
-        value=st.session_state.get("selected_symbol", "HDFCBANK"),
+        value=st.session_state.get("selected_symbol", ""),
         placeholder="e.g. HDFCBANK, RELIANCE, RBA, INFY, TATAMOTORS",
         key="symbol_input_box",
     ).upper().strip()
@@ -76,7 +76,11 @@ for idx, p in enumerate(presets):
         st.session_state["selected_symbol"] = p
         st.rerun()
 
-symbol = symbol_input if symbol_input else "HDFCBANK"
+symbol = symbol_input if symbol_input else ""
+
+if not symbol:
+    st.info("🔎 Enter a stock symbol above (e.g., HDFCBANK, RELIANCE) or click a popular stock button to start live analysis.")
+    st.stop()
 
 # Continuous Real-Time Live Streaming Trigger (No timing selectors shown)
 import time
@@ -120,19 +124,27 @@ if data:
             f"""
             <div style="background-color: {badge_color}22; border: 2px solid {badge_color}; border-radius: 8px; padding: 6px 12px; text-align: center;">
                 <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">LIVE SIGNAL BADGE</span><br/>
-                <strong style="font-size: 18px; color: {badge_color};">{act.replace('_', ' ')} ({conf}%)</strong>
+                <strong style="font-size: 16px; color: {badge_color};">{act} ({conf}%)</strong>
             </div>
             """,
             unsafe_allow_html=True,
         )
     with mcol3:
-        st.metric("Trend Direction", trend_icon)
+        st.markdown(
+            f"""
+            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 6px 12px; text-align: center;">
+                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">TREND DIRECTION</span><br/>
+                <strong style="font-size: 15px; color: #58a6ff;">{trend_icon}</strong>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     with mcol4:
         st.markdown(
             f"""
-            <div style="background-color: {risk_color}22; border: 1px solid {risk_color}; border-radius: 8px; padding: 6px 12px; text-align: center;">
+            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 6px 12px; text-align: center;">
                 <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">RISK LEVEL</span><br/>
-                <strong style="font-size: 16px; color: {risk_color};">{risk} RISK</strong>
+                <strong style="font-size: 15px; color: {risk_color};">{risk} RISK</strong>
             </div>
             """,
             unsafe_allow_html=True,
@@ -142,57 +154,68 @@ if data:
 
     st.markdown("---")
 
-    # 2. Interactive Plotly Candlestick Chart (4 Panels)
+    # 2. Interactive Candlestick Chart
     candles = data.get("candles", [])
-    fig_chart = live_analyzer_chart(candles, symbol, timeframe)
+    sr_levels = data.get("sr_levels", {})
+    patterns = data.get("detected_patterns", [])
+
+    fig_chart = live_analyzer_chart(candles, symbol, timeframe, sr_levels, patterns)
     st.plotly_chart(fig_chart, use_container_width=True)
 
     st.markdown("---")
 
-    # 3. AI Analysis Panel Below Chart
-    st.subheader("🤖 AI Technical Analysis & Short-Term Prediction")
-
+    # 3. Detected Patterns & Indicator Signals Breakdown
     pcol1, pcol2 = st.columns(2)
 
     with pcol1:
-        st.markdown(
-            """
-            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px;">
-                <h4 style="color: #58a6ff; margin-top: 0;">📈 Indicator & Pattern Drivers</h4>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.write("")
-        st.write(f"**EMA 20:** ₹{data.get('ema_20', 0):,.2f} | **EMA 50:** ₹{data.get('ema_50', 0):,.2f}")
-        st.write(f"**RSI (14):** {data.get('rsi', 50)} | **VWAP:** ₹{data.get('vwap', 0):,.2f}")
-        st.write(f"**Volume Surge:** {data.get('volume_surge_ratio', 1.0)}x 20-candle average")
-
-        st.markdown("##### Key Signal Reasons:")
-        for r in data.get("reasons", []):
-            st.markdown(f"- {r}")
-
-        patterns = data.get("detected_patterns", [])
+        st.subheader("🕯️ Detected Candlestick Patterns")
         if patterns:
-            st.markdown(f"🕯️ **Candlestick Patterns Detected:** {', '.join(patterns)}")
+            for p in patterns:
+                ptype = p.get("type", "NEUTRAL")
+                pcolor = "#26a641" if ptype == "BULLISH" else "#ef4444" if ptype == "BEARISH" else "#eab308"
+                st.markdown(
+                    f"""
+                    <div style="background-color: #161b22; border-left: 4px solid {pcolor}; border-radius: 4px; padding: 10px; margin-bottom: 8px;">
+                        <strong style="color: {pcolor};">{p.get('name')}</strong> ({ptype}) — <i>{p.get('desc')}</i>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No major single or multi-candle pattern detected on current timeframe.")
 
     with pcol2:
-        st.markdown(
-            """
-            <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px;">
-                <h4 style="color: #79c0ff; margin-top: 0;">🎯 Short-Term Target & Support/Resistance</h4>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.write("")
-        st.markdown(f"**Short-Term Prediction:** {data.get('prediction', 'Consolidating')}")
-        st.write(f"🎯 **Target Price:** ₹{data.get('target_price', cp):,.2f}")
-        st.write(f"🛡️ **Stop Loss:** ₹{data.get('stop_loss', cp):,.2f}")
+        st.subheader("📊 Indicator Signals Breakdown")
+        ind = data.get("indicators", {})
+        rsi_val = ind.get("rsi", 50)
+        macd_sig = ind.get("macd_signal", "NEUTRAL")
+        ema_sig = ind.get("ema_signal", "NEUTRAL")
+        bb_sig = ind.get("bb_signal", "NEUTRAL")
 
-        st.markdown("##### Key Support & Resistance Levels:")
-        supports = data.get("support_levels", [])
-        resistances = data.get("resistance_levels", [])
+        st.write(f"**RSI (14):** `{rsi_val:.1f}` ({'Overbought > 70' if rsi_val >= 70 else 'Oversold < 30' if rsi_val <= 30 else 'Neutral 30-70'})")
+        st.write(f"**MACD Signal:** `{macd_sig}`")
+        st.write(f"**EMA (20/50):** `{ema_sig}`")
+        st.write(f"**Bollinger Bands:** `{bb_sig}`")
 
-        st.write(f"🟢 **Support Levels:** {', '.join([f'₹{s:.2f}' for s in supports])}")
-        st.write(f"🔴 **Resistance Levels:** {', '.join([f'₹{r:.2f}' for r in resistances])}")
+    # 4. Support & Resistance Summary
+    st.markdown("---")
+    st.subheader("🧱 Key Support & Resistance Levels")
+    supports = sr_levels.get("supports", [])
+    resistances = sr_levels.get("resistances", [])
+
+    scol1, scol2 = st.columns(2)
+    with scol1:
+        st.markdown("**🟢 Support Levels (Buying Demand Zones):**")
+        if supports:
+            for s in supports:
+                st.markdown(f"- `₹{s:,.2f}`")
+        else:
+            st.caption("No strong support detected nearby.")
+
+    with scol2:
+        st.markdown("**🔴 Resistance Levels (Selling Ceiling Zones):**")
+        if resistances:
+            for r in resistances:
+                st.markdown(f"- `₹{r:,.2f}`")
+        else:
+            st.caption("No strong resistance detected nearby.")
