@@ -104,7 +104,7 @@ if data:
     # Interactive Daily Chart
     if candles:
         st.subheader("📈 Daily Candlestick Chart with Moving Averages & Volume")
-        fig = swing_analyzer_chart(symbol, candles)
+        fig = swing_analyzer_chart(candles=candles, symbol=symbol)
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")

@@ -329,8 +329,18 @@ def live_analyzer_chart(candles: List[dict], symbol: str, timeframe: str = "15m"
     return fig
 
 
-def swing_analyzer_chart(candles: list, symbol: str) -> go.Figure:
+def swing_analyzer_chart(symbol_or_candles, candles_or_symbol=None) -> go.Figure:
     """Build a 3-panel Daily Swing Trading chart (Price+EMA20/50/200, Volume, Daily RSI)."""
+    if isinstance(symbol_or_candles, list):
+        candles = symbol_or_candles
+        symbol = str(candles_or_symbol) if candles_or_symbol else ""
+    elif isinstance(candles_or_symbol, list):
+        candles = candles_or_symbol
+        symbol = str(symbol_or_candles) if symbol_or_candles else ""
+    else:
+        candles = []
+        symbol = str(symbol_or_candles) if symbol_or_candles else ""
+
     if not candles:
         fig = go.Figure()
         fig.update_layout(
@@ -341,7 +351,7 @@ def swing_analyzer_chart(candles: list, symbol: str) -> go.Figure:
         )
         return fig
 
-    times = [c["time"] for c in candles]
+    times = [c["time"] if isinstance(c, dict) else str(c) for c in candles]
     opens = [c["open"] for c in candles]
     highs = [c["high"] for c in candles]
     lows = [c["low"] for c in candles]
