@@ -87,7 +87,19 @@ class NSEDataFetcher:
         try:
             yf_sym = self._to_yf_symbol(symbol)
             ticker = yf.Ticker(yf_sym)
-            df = await asyncio.to_thread(ticker.history, period=period, interval=interval)
+
+            # Retry up to 3 times in case of transient yfinance rate-limiting
+            df = pd.DataFrame()
+            for attempt in range(3):
+                try:
+                    df = await asyncio.to_thread(ticker.history, period=period, interval=interval)
+                    if not df.empty:
+                        break
+                except Exception as attempt_exc:
+                    if "Rate limited" in str(attempt_exc) and attempt < 2:
+                        await asyncio.sleep(0.5)
+                    else:
+                        raise attempt_exc
 
             if df.empty or len(df) < 5:
                 logger.warning("Empty or insufficient OHLCV data for {}", symbol)

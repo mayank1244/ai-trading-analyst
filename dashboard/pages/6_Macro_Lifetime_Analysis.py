@@ -2,6 +2,7 @@
 
 import os
 import sys
+import asyncio
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if ROOT_DIR not in sys.path:
@@ -57,7 +58,7 @@ if not symbol:
     st.info("👈 Select a stock from the dropdown menu above and click '🔍 Analyze Stock' to view its complete lifetime inception history, macro news drivers, and trading plans.")
     st.stop()
 
-# Fetch Data from Macro Analyzer API
+# Fetch Data from Macro Analyzer API with Direct Python Fallback for Streamlit Cloud
 data = None
 with st.spinner(f"Fetching full lifetime inception data (since IPO) & macro news drivers for {symbol}..."):
     try:
@@ -65,9 +66,15 @@ with st.spinner(f"Fetching full lifetime inception data (since IPO) & macro news
         if resp.status_code == 200:
             data = resp.json()
         else:
-            st.error(f"Could not load macro lifetime data for '{symbol}'. Detail: {resp.json().get('detail', 'API Error')}")
+            # Fallback to direct Python async call if background Uvicorn is running old routes
+            from app.api.routes.macro_analyzer import analyze_lifetime_macro
+            data = asyncio.run(analyze_lifetime_macro(symbol))
     except Exception as exc:
-        st.error(f"Connection error to macro analyzer backend: {exc}")
+        try:
+            from app.api.routes.macro_analyzer import analyze_lifetime_macro
+            data = asyncio.run(analyze_lifetime_macro(symbol))
+        except Exception as inner_exc:
+            st.error(f"Could not load macro lifetime data for '{symbol}'. Detail: {inner_exc}")
 
 if data:
     name = data.get("name", symbol)
