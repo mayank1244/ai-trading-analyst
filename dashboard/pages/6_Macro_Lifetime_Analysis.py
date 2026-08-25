@@ -23,31 +23,38 @@ st.set_page_config(page_title="Lifetime & Macro Analysis | AI Trading Analyst", 
 st.title("🏛️ Lifetime Inception & Macro Market Analyzer")
 st.caption("Deep analysis of lifetime historical patterns (since IPO listing), 1000-Day EMA super-trend, national & international news drivers, and Day Trading vs. 3–5 Day Swing Trading strategy preferences.")
 
-# Search Bar & Preset Symbols
-col_search, col_space = st.columns([3, 1])
+# Dropdown Selection & Submit Button
+stock_options = {
+    "Bharti Airtel (BHARTIARTL) — Telecom Boom Sector": "BHARTIARTL",
+    "Samvardhana Motherson Intl (MOTHERSON) — Auto Ancillary": "MOTHERSON",
+    "Bharat Electronics (BEL) — Defense Boom Sector": "BEL",
+    "Tata Steel (TATASTEEL) — Metals & Mining": "TATASTEEL",
+    "Tata Motors (TATAMOTORS / TMPV) — Auto & EV": "TATAMOTORS",
+}
 
-with col_search:
-    symbol_input = st.text_input(
-        "🔎 Enter NSE/BSE Stock Symbol for Lifetime & Macro Analysis:",
-        value=st.session_state.get("selected_macro_symbol", ""),
-        placeholder="e.g. BHARTIARTL, MOTHERSON, BEL, TATASTEEL, TATAMOTORS",
-        key="macro_symbol_input_box",
-    ).upper().strip()
+st.subheader("📋 Select Featured Stock for Lifetime Analysis")
 
-# Quick Presets
-st.write("Featured Multi-Decade Stocks & Boom Sectors:")
-preset_cols = st.columns(5)
-presets = ["BHARTIARTL", "MOTHERSON", "BEL", "TATASTEEL", "TATAMOTORS"]
+col_select, col_submit = st.columns([3, 1])
 
-for idx, p in enumerate(presets):
-    if preset_cols[idx].button(p, key=f"macro_preset_{p}", use_container_width=True):
-        st.session_state["selected_macro_symbol"] = p
-        st.rerun()
+with col_select:
+    selected_label = st.selectbox(
+        "Choose Stock:",
+        options=list(stock_options.keys()),
+        index=0,
+        key="macro_stock_select_box",
+    )
+    current_symbol = stock_options[selected_label]
 
-symbol = symbol_input if symbol_input else ""
+with col_submit:
+    st.write("")
+    st.write("")
+    if st.button("🔍 Analyze Stock", type="primary", use_container_width=True):
+        st.session_state["submitted_macro_symbol"] = current_symbol
+
+symbol = st.session_state.get("submitted_macro_symbol", None)
 
 if not symbol:
-    st.info("🔎 Enter a stock symbol above (e.g., BHARTIARTL, MOTHERSON, BEL) or click a featured stock button to run deep lifetime & macro analysis.")
+    st.info("👈 Select a stock from the dropdown menu above and click '🔍 Analyze Stock' to view its complete lifetime inception history, macro news drivers, and trading plans.")
     st.stop()
 
 # Fetch Data from Macro Analyzer API
