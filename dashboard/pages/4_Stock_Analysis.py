@@ -46,23 +46,28 @@ except Exception:
         )
         return fig
 
+from dashboard.components.stock_search import render_groww_stock_search
+
 API_BASE = "http://localhost:8000/api/v1"
 
 st.set_page_config(page_title="Stock Analysis | AI Trading Analyst", layout="wide")
 st.title("📈 Stock Analysis & Movement Predictor")
 
-symbol = st.text_input("Enter NSE Stock Symbol (e.g. RELIANCE, TCS, INFY):", value="", placeholder="e.g. RELIANCE, TCS, INFY").upper().strip()
+symbol, _ = render_groww_stock_search(
+    label="🔎 Search Stock by Name or Symbol (Groww-Style Autocomplete):",
+    session_key="selected_analysis_symbol",
+    box_key="analysis_stock_select_box",
+)
 
-col_btn, col_chk = st.columns([1, 3])
-with col_btn:
-    analyze_btn = st.button("🔍 Analyze Stock", use_container_width=True)
+col_chk = st.columns(1)[0]
 with col_chk:
     skip_ai = st.checkbox("Quick Mode (Skip AI reasoning for faster result)", value=False)
 
 if not symbol:
-    st.info("🔎 Enter a stock symbol above (e.g., RELIANCE, TCS, INFY) to analyze its overall quantitative score & movement predictor.")
-elif analyze_btn or symbol:
-    with st.spinner(f"Analyzing {symbol}..."):
+    st.info("🔎 Search company name or symbol above (e.g., Airtel, Motherson, Tatamotors, Reliance) to analyze its overall quantitative score & movement predictor.")
+    st.stop()
+
+with st.spinner(f"Analyzing {symbol}..."):
         try:
             resp = requests.get(f"{API_BASE}/analysis/{symbol}?skip_ai={skip_ai}", timeout=25)
             if resp.status_code == 200:

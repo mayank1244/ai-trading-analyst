@@ -18,6 +18,7 @@ import streamlit as st
 import plotly.graph_objects as go
 
 from dashboard.components.charts import swing_analyzer_chart
+from dashboard.components.stock_search import render_groww_stock_search
 
 API_BASE = "http://localhost:8000/api/v1"
 
@@ -26,31 +27,25 @@ st.set_page_config(page_title="Swing Stock Analysis | AI Trading Analyst", layou
 st.title("🎯 Swing Stock Analysis (3 – 8 Days)")
 st.caption("Daily chart analysis using Daily EMA 20/50/200, Daily RSI 14, Volume Surge, 5-Point Swing Checklist, & Calculated Risk-to-Reward Trade Plan.")
 
-# Search Bar & Preset Symbols
-col_search, col_space = st.columns([3, 1])
-
-with col_search:
-    symbol_input = st.text_input(
-        "🔎 Enter NSE/BSE Stock Symbol for Swing Analysis:",
-        value=st.session_state.get("selected_swing_symbol", ""),
-        placeholder="e.g. DEEPAKFERT, TATAMOTORS, TITAN, RELIANCE, DIVISLAB",
-        key="swing_symbol_input_box",
-    ).upper().strip()
+# Groww-Style Autocomplete Stock Search
+symbol, _ = render_groww_stock_search(
+    label="🔎 Search Stock by Name or Symbol (Groww-Style Autocomplete):",
+    session_key="selected_swing_symbol",
+    box_key="swing_stock_select_box",
+)
 
 # Quick Presets
 st.write("Popular Swing Candidates:")
 preset_cols = st.columns(7)
-presets = ["DEEPAKFERT", "TATAMOTORS", "TITAN", "DIVISLAB", "HCLTECH", "RELIANCE", "UPL"]
+presets = ["BHARTIARTL", "MOTHERSON", "BEL", "DEEPAKFERT", "TATAMOTORS", "TITAN", "RELIANCE"]
 
 for idx, p in enumerate(presets):
     if preset_cols[idx].button(p, key=f"swing_preset_{p}", use_container_width=True):
         st.session_state["selected_swing_symbol"] = p
         st.rerun()
 
-symbol = symbol_input if symbol_input else ""
-
 if not symbol:
-    st.info("🔎 Enter a stock symbol above (e.g., TATAMOTORS, RELIANCE) or click a candidate button to view 3–8 day swing analysis.")
+    st.info("🔎 Search company name or symbol above (e.g., Airtel, Motherson, Tatamotors, Reliance) or click a candidate button to view 3–8 day swing analysis.")
     st.stop()
 
 # Fetch Data from Swing Analyzer API

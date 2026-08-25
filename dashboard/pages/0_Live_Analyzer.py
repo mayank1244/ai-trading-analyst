@@ -18,6 +18,7 @@ import streamlit as st
 import plotly.graph_objects as go
 
 from dashboard.components.charts import live_analyzer_chart
+from dashboard.components.stock_search import render_groww_stock_search
 
 API_BASE = "http://localhost:8000/api/v1"
 
@@ -44,12 +45,11 @@ with col_live:
 col_search, col_time = st.columns([3, 2])
 
 with col_search:
-    symbol_input = st.text_input(
-        "🔎 Enter NSE/BSE Stock Symbol:",
-        value=st.session_state.get("selected_symbol", ""),
-        placeholder="e.g. HDFCBANK, RELIANCE, RBA, INFY, TATAMOTORS",
-        key="symbol_input_box",
-    ).upper().strip()
+    symbol, _ = render_groww_stock_search(
+        label="🔎 Search Stock by Name or Symbol (Groww-Style Autocomplete):",
+        session_key="selected_symbol",
+        box_key="live_stock_select_box",
+    )
 
 with col_time:
     st.write("**Timeframe:**")
@@ -72,17 +72,15 @@ timeframe = st.session_state.get("selected_tf", "15m")
 # Quick Preset Buttons
 st.write("Popular Stocks:")
 preset_cols = st.columns(7)
-presets = ["HDFCBANK", "RELIANCE", "INFY", "TATAMOTORS", "RBA", "SUZLON", "JPPOWER"]
+presets = ["BHARTIARTL", "MOTHERSON", "BEL", "HDFCBANK", "RELIANCE", "INFY", "TATAMOTORS"]
 
 for idx, p in enumerate(presets):
     if preset_cols[idx].button(p, key=f"preset_{p}", use_container_width=True):
         st.session_state["selected_symbol"] = p
         st.rerun()
 
-symbol = symbol_input if symbol_input else ""
-
 if not symbol:
-    st.info("🔎 Enter a stock symbol above (e.g., HDFCBANK, RELIANCE) or click a popular stock button to start live analysis.")
+    st.info("🔎 Search company name or symbol above (e.g., Airtel, Motherson, Tatamotors, Reliance) or click a popular stock button to start live analysis.")
     st.stop()
 
 # Continuous Real-Time Live Streaming Trigger (No timing selectors shown)
